@@ -1,5 +1,5 @@
 class Validator:
-    @staticmethod 
+    @staticmethod #can be used without creating an instance of the class (ex. validator.is_valid(name))
     def is_valid(name):
         return (
             isinstance(name, str) and len(name) > 0 and name.isascii()
