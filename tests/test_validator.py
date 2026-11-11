@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-
-=======
 import unittest
 import os
 import sys
@@ -35,4 +32,3 @@ class TestValidator(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
->>>>>>> feature/validator
