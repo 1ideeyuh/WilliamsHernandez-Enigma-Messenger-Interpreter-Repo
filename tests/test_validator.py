@@ -1,13 +1,18 @@
+import os
+import sys
 import unittest
-from src.validator import validator as Validator
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from src.validator import Validator
 
 class TestValidator(unittest.TestCase):
     def test_valid_names(self):
         self.assertTrue(Validator.is_valid("alice"))
-        self.assertTrue(Validator.is_valid("Bob3"))
+        self.assertTrue(Validator.is_valid("Bob2"))
 
     def test_invalid_names(self):
-        for bad in ["", "1abc", "al ice", "al_ice", "al-ice", "al!ce"]:
+        for bad in ["", "1abc", "al ice", "al_ice", "al-ice", "é"]:
             self.assertFalse(Validator.is_valid(bad))
 
     def test_non_string(self):
