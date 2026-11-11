@@ -1,5 +1,5 @@
 import unittest
-from src.validator import validator as Validator
+from src.validator import Validator
 
 class TestValidator(unittest.TestCase):
     def test_valid_names(self):
