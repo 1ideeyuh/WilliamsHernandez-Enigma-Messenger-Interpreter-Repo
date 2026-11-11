@@ -1,5 +1,6 @@
 from datetime import datetime
 from validator import Validator
+import itertools
 
 class Message:
     """A single message sent from one user to another.
@@ -11,7 +12,7 @@ class Message:
         timestamp (datetime): when the message was created
         encrypted (bool): True if content is currently ciphertext
     """
-
+    _counter = itertools.count()
     def __init__(self, sender, recipient, content, timestamp=None, encrypted=False):
         if not Validator.is_valid(sender):
             raise ValueError(f"Invalid sender username: {sender!r}")
@@ -25,8 +26,12 @@ class Message:
         self._content = content
         self._timestamp = timestamp if timestamp is not None else datetime.now()
         self._encrypted = encrypted
+        self._order = next(Message._counter)
 
-    #getters
+# getters
+    def get_order(self):
+        return self._order
+    
     def get_sender(self):
         return self._sender
 
