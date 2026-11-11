@@ -1,5 +1,8 @@
 import unittest
-from src.validator import Validator
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from validator import Validator
 
 class TestValidator(unittest.TestCase):
     def test_valid_names(self):
