@@ -1,9 +1,5 @@
-"""message.py - the Message class for Enigma Messenger."""
-
 from datetime import datetime
-
 from validator import Validator
-
 
 class Message:
     """A single message sent from one user to another.
@@ -30,7 +26,7 @@ class Message:
         self._timestamp = timestamp if timestamp is not None else datetime.now()
         self._encrypted = encrypted
 
-    # ---- getters ----
+    #getters
     def get_sender(self):
         return self._sender
 
@@ -46,7 +42,7 @@ class Message:
     def is_encrypted(self):
         return self._encrypted
 
-    # ---- setters ----
+    # setters
     def set_content(self, new_content, encrypted=False):
         """Replace the content (e.g. after a Cipher encrypts or decrypts it)."""
         if not isinstance(new_content, str) or not new_content.strip():
@@ -54,7 +50,7 @@ class Message:
         self._content = new_content
         self._encrypted = encrypted
 
-    # ---- saving / loading (useful for the file classes) ----
+    # saving / loading
     def to_dict(self):
         """Turn the message into a plain dictionary so it can be saved to a file."""
         return {
