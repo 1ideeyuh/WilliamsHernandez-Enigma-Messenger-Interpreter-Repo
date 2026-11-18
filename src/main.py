@@ -73,7 +73,7 @@ def new_cipher(old_shift):
     return cipher
 
 
-def save_conversation(filename, history, cipher, folder=UEMR_FOLDER):
+def save_conversation(filename, history, cipher):
     """Write the shift on line 1 and the encrypted conversation after it."""
     File.write_file(filename,f"{cipher.get_shift()}\n{cipher.encrypt(history)}")
 

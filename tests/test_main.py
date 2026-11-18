@@ -1,4 +1,6 @@
 #uses temp folders, not real UEMR
+"""test_main.py - unit tests for main.py (uses temporary folders, never the real UEMR)."""
+
 import io
 import os
 import shutil
@@ -16,18 +18,20 @@ import Git
 import main
 from cipher import Cipher
 
+
 def point_uemr_at(testcase, folder):
-    """make file.py and git.py use 'folder' as the UEMR repo instead of the real one"""
+    """Make File.py and Git.py use `folder` instead of the real UEMR clone."""
     for module in (File, Git):
         patcher = patch.object(module, "UEMR_repo", folder)
         patcher.start()
         testcase.addCleanup(patcher.stop)
 
+
 class TestHelpers(unittest.TestCase):
 
     def setUp(self):
         self.folder = tempfile.mkdtemp()
-        self.addCleanup(shitil.rmtree, self.folder, ignore_errors=True)
+        self.addCleanup(shutil.rmtree, self.folder, ignore_errors=True)
         point_uemr_at(self, self.folder)
 
     def test_ask_for_users_returns_valid_names(self):
@@ -41,19 +45,16 @@ class TestHelpers(unittest.TestCase):
             self.assertEqual(main.ask_for_users(), ("alice", "bob"))
 
     def test_load_missing_file_gives_empty_history(self):
-        self.assertEqual(main.load_conversation("alice-bob.txt", self.folder),
-                         ("", None))
+        self.assertEqual(main.load_conversation("alice-bob.txt"), ("", None))
 
     def test_save_then_load_round_trip(self):
-        main.save_conversation("alice-bob.txt", "alice: hi, 42!\n",
-                               Cipher(7), self.folder)
-        history, shift = main.load_conversation("alice-bob.txt", self.folder)
+        main.save_conversation("alice-bob.txt", "alice: hi, 42!\n", Cipher(7))
+        history, shift = main.load_conversation("alice-bob.txt")
         self.assertEqual(history, "alice: hi, 42!\n")
         self.assertEqual(shift, 7)
 
     def test_saved_file_is_encrypted_and_has_shift_header(self):
-        main.save_conversation("alice-bob.txt", "alice: hello\n",
-                               Cipher(7), self.folder)
+        main.save_conversation("alice-bob.txt", "alice: hello\n", Cipher(7))
         with open(os.path.join(self.folder, "alice-bob.txt"), encoding="utf-8") as f:
             content = f.read()
         self.assertTrue(content.startswith("7\n"))
@@ -63,7 +64,7 @@ class TestHelpers(unittest.TestCase):
         with open(os.path.join(self.folder, "alice-bob.txt"), "w") as f:
             f.write("not a number\nsome text")
         with self.assertRaises(ValueError):
-            main.load_conversation("alice-bob.txt", self.folder)
+            main.load_conversation("alice-bob.txt")
 
     def test_add_message_appends_line(self):
         history = main.add_message("alice: hi\n", "bob", "alice", "hello")
@@ -85,7 +86,6 @@ class TestWholeProgram(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
-        self.remote = os.path.join(self.tmp, "remote.git")
 
     def git(self, cwd, *args):
         subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
@@ -127,21 +127,21 @@ class TestWholeProgram(unittest.TestCase):
     def test_two_users_chat_through_the_shared_repo(self):
         remote = self.make_remote()
         alice_copy = self.clone(remote, "alice-copy")
-        bob_copy = self.clone(remote, "bob-copy")  # cloned before alice writes
+        bob_copy = self.clone(remote, "bob-copy")  # cloned BEFORE alice writes
 
         self.run_main(remote, alice_copy, ["alice", "bob", "hello bob"])
         output = self.run_main(remote, bob_copy, ["bob", "alice", "hi alice"])
 
         self.assertIn("alice: hello bob", output)  # bob saw alice's message
 
-        carol_copy = self.clone("carol-copy")
+        carol_copy = self.clone(remote, "carol-copy")
         history, _ = self.read(carol_copy, "alice-bob.txt")
         self.assertEqual(history, "alice: hello bob\nbob: hi alice\n")
 
     def test_shift_changes_every_time_a_message_is_saved(self):
         remote = self.make_remote()
         copy = self.clone(remote, "copy")
-        self.run_main(copy, ["alice", "bob", "one"])
+        self.run_main(remote, copy, ["alice", "bob", "one"])
         _, first_shift = self.read(copy, "alice-bob.txt")
         self.run_main(remote, copy, ["alice", "bob", "two"])
         _, second_shift = self.read(copy, "alice-bob.txt")
@@ -153,6 +153,15 @@ class TestWholeProgram(unittest.TestCase):
         output = self.run_main(remote, copy, ["alice", "bob", "   "])
         self.assertIn("Message not sent", output)
         self.assertFalse(os.path.exists(os.path.join(copy, "alice-bob.txt")))
+
+    def test_completely_empty_shared_repo_does_not_crash(self):
+        remote = self.make_remote(seeded=False)
+        copy = self.clone(remote, "copy")
+        output = self.run_main(remote, copy, ["alice", "bob", "first ever"])
+        self.assertIn("Nothing to pull yet", output)
+        # The message is still saved on this computer
+        history, _ = self.read(copy, "alice-bob.txt")
+        self.assertEqual(history, "alice: first ever\n")
 
 
 if __name__ == "__main__":
