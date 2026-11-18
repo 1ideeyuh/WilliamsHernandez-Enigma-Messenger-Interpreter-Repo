@@ -1,4 +1,5 @@
-import os
+import File
+import Git
 import subprocess
 
 from cipher import Cipher
@@ -6,42 +7,28 @@ from user import User
 from validator import Validator
 
 # UEMR is cloned NEXT TO this repo, not inside it:
-UEMR_FOLDER = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "USAO-Enigma-Messenger-Repo")
-)
+UEMR_URL = "https://github.com/qtranokc/USAO-Enigma-Messenger-Repo.git"
 
 
-# git helpers
-def run_git(*args, folder=UEMR_FOLDER):
-    """Run a git command inside `folder`. Raises CalledProcessError if it fails."""
-    subprocess.run(["git", *args], cwd=folder, check=True)
+# git 
 
-
-def has_commits(folder=UEMR_FOLDER):
-    """True if the repo in `folder` has at least one commit."""
+def has_commits():
+    """True if the UEMR clone has at least one commit."""
     result = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=folder,
+        ["git", "-C", File.UEMR_repo, "rev-parse", "--verify", "HEAD"],
         capture_output=True,
     )
     return result.returncode == 0
 
 
-def pull_repo(folder=UEMR_FOLDER):
+def pull_repo(repo_url=UEMR_URL):
     """Download the newest messages. An empty shared repo is not an error."""
     try:
-        run_git("pull", folder=folder)
-    except subprocess.CalledProcessError:
-        if has_commits(folder):
-            raise  # a real problem (no internet, conflict, ...)
-        print("Nothing to pull yet (the shared repo may still be empty).")
-
-
-def push_repo(filename, folder=UEMR_FOLDER):
-    """Save the updated message file to GitHub."""
-    run_git("add", filename, folder=folder)
-    run_git("commit", "-m", f"New message in {filename}", folder=folder)
-    run_git("push", "-u", "origin", "HEAD", folder=folder)
+        Git.pull_uemr(repo_url)
+    except RuntimeError:
+        if has_commits():
+            raise # a real problem, not just an empty repo
+        print("Nothing to pull yet. The shared repo might be empty.")
 
 
 # asking the user
@@ -58,15 +45,12 @@ def ask_for_users():
 
 
 # reading and writing
-def load_conversation(filename, folder=UEMR_FOLDER):
+def load_conversation(filename):
     """Return (decrypted_history, shift_used). A new conversation gives ("", None)."""
-    path = os.path.join(folder, filename)
-    if not os.path.exists(path):
+    if not File.file_exists(filename):
         return "", None
 
-    with open(path, "r", encoding="utf-8") as file:
-        content = file.read()
-
+    content = File.read_file(filename)
     header, _, body = content.partition("\n")  # split at the FIRST newline
     try:
         cipher = Cipher(int(header))
@@ -89,18 +73,17 @@ def new_cipher(old_shift):
     return cipher
 
 
-def save_conversation(filename, history, cipher, folder=UEMR_FOLDER):
+def save_conversation(filename, history, cipher):
     """Write the shift on line 1 and the encrypted conversation after it."""
-    path = os.path.join(folder, filename)
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(f"{cipher.get_shift()}\n{cipher.encrypt(history)}")
+    File.write_file(filename,f"{cipher.get_shift()}\n{cipher.encrypt(history)}")
+
 
 
 # main
-def main(folder=UEMR_FOLDER):
+def main(repo_url=UEMR_URL):
     try:
-        pull_repo(folder)
-    except subprocess.CalledProcessError:
+        pull_repo(repo_url)
+    except RuntimeError:
         print("Could not pull the shared repo. Check your internet and try again.")
         return
 
@@ -108,7 +91,7 @@ def main(folder=UEMR_FOLDER):
     filename = Validator.filename(me, other)
 
     try:
-        history, old_shift = load_conversation(filename, folder)
+        history, old_shift = load_conversation(filename)
     except ValueError as error:
         print(error)
         return
@@ -125,11 +108,11 @@ def main(folder=UEMR_FOLDER):
         print(f"Message not sent: {error}")
         return
 
-    save_conversation(filename, history, new_cipher(old_shift), folder)
+    save_conversation(filename, history, new_cipher(old_shift))
 
     try:
-        push_repo(filename, folder)
-    except subprocess.CalledProcessError:
+        Git.push_uemr(repo_url)
+    except RuntimeError:
         print("Your message was saved on this computer but could not be pushed.")
         return
     print("Message sent!")
