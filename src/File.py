@@ -1,8 +1,7 @@
 import os 
 
 UEMR_repo = os.path.abspath(os.path.join(os.path.dirname(__file__),"..", "..", "USAO-Enigma-Messenger-Repo"))
-print("UEMR folder path:", UEMR_repo)  # Debugging line to check the path
-print("folder exists:", os.path.exists(UEMR_repo))  # Debugging line to check if the folder exists
+
 
 
 def get_file_path(filename):
